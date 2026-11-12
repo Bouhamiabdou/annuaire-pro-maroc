@@ -73,11 +73,11 @@ export function ListeResultats(p: { fiches: Fiche[]; message?: string; onOpen: (
   );
 }
 
-export function LiensDirects({ liens }: { liens: Lien[] }) {
+export function LiensDirects({ liens, titre }: { liens: Lien[]; titre?: string }) {
   if (!liens.length) return null;
   return (
     <View style={[S.card, { backgroundColor: C.primaryLight }]}>
-      <Text style={{ fontWeight: '600', color: C.primary, marginBottom: 8 }}>Recherche directe (gratuite, illimitée)</Text>
+      <Text style={{ fontWeight: '600', color: C.primary, marginBottom: 8 }}>{titre ?? 'Recherche directe (gratuite, illimitée)'}</Text>
       <View style={S.row}>
         {liens.map(l => (
           <Pressable key={l.url} onPress={() => Linking.openURL(l.url)} style={S.chip}>

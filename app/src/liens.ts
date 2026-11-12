@@ -7,11 +7,20 @@ export type Lien = { label: string; url: string };
 
 const google = (q: string) => `https://www.google.com/search?q=${encodeURIComponent(q)}`;
 
-export function liensSociete(valeur: string): Lien[] {
+const ANNUAIRES: [string, string][] = [
+  ['Welipro', 'maroc.welipro.com'],
+  ['BT-Africa', 'bt-africa.com'],
+  ['Charika', 'charika.ma'],
+  ['Telecontact', 'telecontact.ma'],
+];
+
+/** Liens d'ouverture directe dans les annuaires, pour un identifiant ou un nom. */
+export function liensSociete(valeur: string, exact = true): Lien[] {
   const v = valeur.trim();
+  const q = exact ? `"${v}"` : v;
   return [
-    { label: 'Recherche Google', url: google(`"${v}" Maroc société`) },
-    ...SOURCES_SOCIETES.slice(0, 5).map(d => ({ label: d, url: google(`site:${d} "${v}"`) })),
+    { label: 'Google (tous les annuaires)', url: google(exact ? q : `${v} société Maroc ICE`) },
+    ...ANNUAIRES.map(([label, d]) => ({ label, url: google(`site:${d} ${q}`) })),
   ];
 }
 

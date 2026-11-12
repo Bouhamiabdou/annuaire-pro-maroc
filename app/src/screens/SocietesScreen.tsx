@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { S, C } from '../theme';
-import { Bouton, Chargement, Chips, Interrupteur, ListeResultats, LiensDirects } from '../components/ui';
+import { Bouton, Chargement, Chips, ListeResultats, LiensDirects } from '../components/ui';
 import { Lien, liensSociete } from '../liens';
 import { MODES_SOCIETE, ModeSociete, normaliser, valider } from '../validators';
 import { TRIBUNAUX } from '../sources';
@@ -14,7 +14,6 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
   const [mode, setMode] = useState<ModeSociete>('ice');
   const [valeur, setValeur] = useState('');
   const [tribunal, setTribunal] = useState('Casablanca');
-  const [webEntier, setWebEntier] = useState(false);
   const [etat, setEtat] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [fiches, setFiches] = useState<Fiche[]>([]);
@@ -24,6 +23,14 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
 
   const modeDef = MODES_SOCIETE.find(m => m.id === mode)!;
 
+  /** Action principale : ouvre la recherche dans les annuaires (gratuit, sans IA). */
+  function ouvrir(m = mode, v = valeur) {
+    const err = valider(m, v);
+    if (err) { setErreur(err); return; }
+    setErreur(null); setFiches([]); setMessage(undefined);
+    setLiens(liensSociete(normaliser(m, v), m !== 'nom' && m !== 'adresse'));
+  }
+
   async function lancer(m = mode, v = valeur) {
     const err = valider(m, v);
     if (err) { setErreur(err); return; }
@@ -31,9 +38,9 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
     setEtat('Recherche dans les annuaires…');
     const val = normaliser(m, v);
     try {
-      const r = await rechercherSociete({ mode: m, valeur: val, tribunal: m === 'rc' ? tribunal : undefined, webEntier });
+      const r = await rechercherSociete({ mode: m, valeur: val, tribunal: m === 'rc' ? tribunal : undefined });
       setFiches(r.resultats);
-      setMessage(r.message || (r.resultats.length ? undefined : 'Aucun résultat. Essayez « Élargir à tout le web » ou la recherche directe.'));
+      setMessage(r.message || (r.resultats.length ? undefined : 'Aucun résultat. Utilisez les liens vers les annuaires.'));
       if (r.resultats.length) await ajouterHistorique(`${modeDef.label} ${val}`, r.resultats);
       else setLiens(liensSociete(val));
     } catch (e: any) {
@@ -62,9 +69,9 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
       const ex = await lireDocument(a.base64, a.mimeType ?? 'image/jpeg');
       setLu(ex);
       setEtat(null);
-      if (ex.ice && ex.ice.length === 15) { setMode('ice'); setValeur(ex.ice); await lancer('ice', ex.ice); }
-      else if (ex.rc) { setMode('rc'); setValeur(ex.rc); await lancer('rc', ex.rc); }
-      else if (ex.raison_sociale) { setMode('nom'); setValeur(ex.raison_sociale); await lancer('nom', ex.raison_sociale); }
+      if (ex.ice && ex.ice.length === 15) { setMode('ice'); setValeur(ex.ice); ouvrir('ice', ex.ice); }
+      else if (ex.rc) { setMode('rc'); setValeur(ex.rc); ouvrir('rc', ex.rc); }
+      else if (ex.raison_sociale) { setMode('nom'); setValeur(ex.raison_sociale); ouvrir('nom', ex.raison_sociale); }
       else setErreur('Aucun identifiant lisible sur le document.');
     } catch (e: any) {
       setErreur(e?.message ?? String(e));
@@ -75,7 +82,7 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
   return (
     <ScrollView style={S.screen} contentContainerStyle={S.content} keyboardShouldPersistTaps="handled">
       <Text style={S.h1}>Sociétés</Text>
-      <Text style={S.hint}>Recherche par ICE, RC, IF, raison sociale, téléphone ou adresse.</Text>
+      <Text style={S.hint}>Photographiez un ticket ou saisissez un identifiant : l'application ouvre la fiche dans les annuaires.</Text>
 
       <Chips items={MODES_SOCIETE} value={mode} onChange={m => { setMode(m); setErreur(null); }} />
 
@@ -88,29 +95,26 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
         placeholderTextColor={C.muted}
         keyboardType={['ice', 'rc', 'if', 'tel'].includes(mode) ? 'number-pad' : 'default'}
         returnKeyType="search"
-        onSubmitEditing={() => lancer()}
+        onSubmitEditing={() => ouvrir()}
       />
 
       {mode === 'rc' && (
         <>
-          <Text style={S.label}>Tribunal de commerce</Text>
+          <Text style={S.label}>Tribunal de commerce (pour la fiche automatique)</Text>
           <Chips items={TRIBUNAUX.map(t => ({ id: t, label: t }))} value={tribunal} onChange={setTribunal} />
         </>
       )}
 
-      <Interrupteur
-        label="Élargir à tout le web"
-        aide="Par défaut : annuaires d'entreprises uniquement"
-        value={webEntier}
-        onChange={setWebEntier}
-      />
 
       <View style={[S.row, { marginTop: 16 }]}>
-        <Bouton titre="Rechercher" onPress={() => lancer()} disabled={!!etat} />
+        <Bouton titre="Ouvrir dans les annuaires" onPress={() => ouvrir()} disabled={!!etat} />
       </View>
       <View style={[S.row, { marginTop: 8 }]}>
         {Platform.OS !== 'web' && <Bouton alt titre="📷 Photo ticket / facture" onPress={() => scanner(true)} disabled={!!etat} />}
         <Bouton alt titre="🖼 Importer une image" onPress={() => scanner(false)} disabled={!!etat} />
+      </View>
+      <View style={[S.row, { marginTop: 8 }]}>
+        <Bouton alt titre="Fiche automatique (essai, moins fiable)" onPress={() => lancer()} disabled={!!etat} />
       </View>
 
       {lu && (
@@ -124,8 +128,8 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
 
       {erreur && <Text style={S.error}>{erreur}</Text>}
       {etat && <Chargement texte={etat} />}
+      <LiensDirects liens={liens} titre="Ouvrir la fiche dans un annuaire" />
       <ListeResultats fiches={fiches} message={message} onOpen={onOpen} />
-      <LiensDirects liens={liens} />
     </ScrollView>
   );
 }
