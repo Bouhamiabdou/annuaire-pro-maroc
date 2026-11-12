@@ -55,7 +55,7 @@ Règles :
 - Les noms marocains s'écrivent de plusieurs façons en lettres latines (Agdach, Aguedach, Agdache ; Benali, Ben Ali). Traite ces variantes comme le même nom, et accepte les abréviations (ophtalmo = ophtalmologue).
 - Si aucun résultat ne correspond exactement, renvoie quand même les résultats les plus proches plutôt qu'une liste vide, en indiquant l'écart dans "remarques" (orthographe ou spécialité différente).
 - Chaque fiche liste dans "sources" les URL des résultats utilisés (copiées telles quelles).
-- Réponds en français, uniquement par un objet JSON entre <json> et </json>, sans autre texte.`;
+- Réponds en français, uniquement par l'objet JSON demandé, sans balise ni autre texte.`;
 
 const SCHEMA_SOCIETE = `{"resultats":[{"raison_sociale":"","sigle":"","forme_juridique":"","capital":"","rc":"","tribunal":"","ice":"","identifiant_fiscal":"","patente":"","cnss":"","adresse":"","ville":"","activite":"","date_creation":"","statut":"","telephone":"","dirigeants":"","remarques":"","sources":[{"titre":"","url":""}]}],"message":""}`;
 
@@ -93,8 +93,8 @@ export async function rechercherSociete(p: {
   const prompt = `Recherche la ou les sociétés marocaines correspondant à ce ${LIBELLES[p.mode]} : "${p.valeur}"${precision}.
 Pour un identifiant (ICE, RC, IF), vérifie que l'identifiant trouvé correspond exactement à la recherche.
 Renvoie au maximum 8 résultats, du plus pertinent au moins pertinent, au format :
-<json>${SCHEMA_SOCIETE}</json>
-Si rien n'est trouvé : <json>{"resultats":[],"message":"explication courte"}</json>`;
+${SCHEMA_SOCIETE}
+Si rien n'est trouvé : {"resultats":[],"message":"explication courte"}`;
   // Un identifiant se cherche tel quel, entre guillemets : c'est ce qui donne les meilleurs résultats.
   const requete = p.mode === 'ice' ? `"${p.valeur}"` :
     p.mode === 'rc' ? `"${p.valeur}" RC ${p.tribunal ?? ''} société Maroc` :
@@ -136,8 +136,8 @@ export async function rechercherPro(p: {
   const prompt = `Recherche des professionnels exerçant au Maroc. Profession : ${prof.label}. ${criteres}
 Ne renvoie que des informations professionnelles publiées (cabinet, inscription à l'ordre ou au barreau, spécialité, téléphone professionnel). N'inclus jamais d'adresse personnelle ni de donnée privée.
 Renvoie tous les résultats qui correspondent ou s'en approchent (10 au maximum), les plus proches de la demande en premier, au format :
-<json>${SCHEMA_PRO}</json>
-Si rien n'est trouvé : <json>{"resultats":[],"message":"explication courte"}</json>`;
+${SCHEMA_PRO}
+Si rien n'est trouvé : {"resultats":[],"message":"explication courte"}`;
   const spec = developper(p.specialite);
   const requete = [p.nom && (['medecin', 'dentiste'].includes(prof.id) ? `Dr ${p.nom}` : `${prof.label} ${p.nom}`), spec || prof.label, p.ville, p.numero, 'Maroc'].filter(Boolean).join(' ');
   const r = await appeler({ system: REGLES, prompt, recherche: { requete, domaines: domains } });
@@ -152,10 +152,10 @@ export type Extraction = {
 /** Lit un ticket, une facture ou un cachet et en extrait les identifiants. */
 export async function lireDocument(base64: string, mimeType = 'image/jpeg'): Promise<Extraction> {
   const r = await appeler({
-    system: 'Tu extrais des données de documents. Réponds uniquement en JSON entre <json> et </json>.',
+    system: 'Tu extrais des données de documents. Réponds uniquement par l\'objet JSON demandé.',
     image: { data: base64, mimeType },
     prompt: `Extrais de ce document marocain (ticket, facture, cachet) les identifiants de l'émetteur.
-Format : <json>{"ice":"","rc":"","identifiant_fiscal":"","raison_sociale":"","telephone":"","adresse":""}</json>
+Format : {"ice":"","rc":"","identifiant_fiscal":"","raison_sociale":"","telephone":"","adresse":""}
 Ne recopie que ce qui est lisible ; laisse vide sinon. Pour un nom tronqué, donne la partie lisible.`,
   });
   const j = extraireJSON(r.texte);

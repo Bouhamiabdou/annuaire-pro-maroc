@@ -5,7 +5,7 @@
 // Sortie  : { texte, sources: [{ url, titre }] }  |  { error: { message, code? } }
 
 const MODELE = 'gemini-flash-lite-latest';
-const VERSION = '2026-11-12.7';
+const VERSION = '2026-11-12.8';
 const env = (k: string): string =>
   ((globalThis as any).process?.env?.[k] ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
 
@@ -83,7 +83,7 @@ async function gemini(system: string | undefined, parts: any[]): Promise<string>
       body: JSON.stringify({
         contents: [{ role: 'user', parts }],
         ...(system ? { systemInstruction: { parts: [{ text: system.slice(0, 4000) }] } } : {}),
-        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+        generationConfig: { temperature: 0.1, maxOutputTokens: 8192, responseMimeType: 'application/json' },
       }),
     });
     const data: any = await res.json().catch(() => ({}));
