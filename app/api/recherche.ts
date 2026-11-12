@@ -5,7 +5,7 @@
 // Sortie  : { texte, sources: [{ url, titre }] }  |  { error: { message, code? } }
 
 const MODELE = 'gemini-flash-lite-latest';
-const VERSION = '2026-11-12.3';
+const VERSION = '2026-11-12.4';
 const env = (k: string): string =>
   ((globalThis as any).process?.env?.[k] ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
 
@@ -88,7 +88,10 @@ async function gemini(system: string | undefined, parts: any[]): Promise<string>
     const msg: string = data?.error?.message ?? '';
     if (res.status === 503 && essai === 0) { await new Promise(r => setTimeout(r, 1500)); continue; }
     if (res.status === 429) throw new Erreur(429, 'Quota gratuit Gemini atteint.', 'quota');
-    if (/API key not valid|API_KEY_INVALID/i.test(msg)) throw new Erreur(500, 'Clé Gemini invalide sur le serveur.');
+    if (/API key not valid|API_KEY_INVALID/i.test(msg)) {
+      const apercu = `${cle.slice(0, 6)}…${cle.slice(-4)} (${cle.length} caractères)`;
+      throw new Erreur(500, `Clé Gemini invalide sur le serveur [clé lue : ${apercu}].`);
+    }
     if (res.status === 402) throw new Erreur(500, 'Clé Gemini liée à un projet payant sans crédit : utilisez une clé de projet gratuit.');
     throw new Erreur(res.status, msg || `Erreur du service (${res.status}).`);
   }
