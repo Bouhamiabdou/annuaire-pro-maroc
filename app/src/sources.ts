@@ -36,6 +36,6 @@ export const TRIBUNAUX = [
   'Kénitra', 'El Jadida', 'Settat', 'Mohammedia', 'Tétouan', 'Laâyoune', 'Béni Mellal', 'Safi',
 ];
 
-// Adresse du relais pour les versions mobiles (la version web utilise /api/claude).
+// Adresse du relais pour les versions mobiles (la version web utilise /api/recherche).
 export const API_BASE: string =
   (process.env.EXPO_PUBLIC_API_BASE as string | undefined) || 'https://annuaire-pro-maroc.vercel.app';

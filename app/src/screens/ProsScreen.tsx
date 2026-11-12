@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { S, C } from '../theme';
-import { Bouton, Chargement, Chips, Interrupteur, ListeResultats } from '../components/ui';
+import { Bouton, Chargement, Chips, Interrupteur, ListeResultats, LiensDirects } from '../components/ui';
+import { Lien, liensPro } from '../liens';
 import { PROFESSIONS } from '../sources';
-import { rechercherPro } from '../engine';
+import { rechercherPro, ErreurMoteur } from '../engine';
 import { ajouterHistorique } from '../storage';
 import { Fiche } from '../types';
 
@@ -18,6 +19,7 @@ export default function ProsScreen({ onOpen }: { onOpen: (f: Fiche) => void }) {
   const [erreur, setErreur] = useState<string | null>(null);
   const [fiches, setFiches] = useState<Fiche[]>([]);
   const [message, setMessage] = useState<string>();
+  const [liens, setLiens] = useState<Lien[]>([]);
 
   const label = PROFESSIONS.find(p => p.id === prof)!.label;
   const avecSpecialite = ['medecin', 'dentiste', 'avocat', 'architecte'].includes(prof);
@@ -27,7 +29,8 @@ export default function ProsScreen({ onOpen }: { onOpen: (f: Fiche) => void }) {
       setErreur('Renseignez au moins un critère (nom, spécialité, ville ou numéro).');
       return;
     }
-    setErreur(null); setFiches([]); setMessage(undefined);
+    setErreur(null); setFiches([]); setMessage(undefined); setLiens([]);
+    const crit = [nom, specialite, ville, numero].filter(x => x.trim()).join(' ');
     setEtat(`Recherche : ${label.toLowerCase()}…`);
     try {
       const r = await rechercherPro({
@@ -35,11 +38,13 @@ export default function ProsScreen({ onOpen }: { onOpen: (f: Fiche) => void }) {
         ville: ville.trim(), numero: numero.trim(), webEntier,
       });
       setFiches(r.resultats);
-      setMessage(r.message || (r.resultats.length ? undefined : 'Aucun résultat. Essayez « Élargir à tout le web ».'));
+      setMessage(r.message || (r.resultats.length ? undefined : 'Aucun résultat. Essayez « Élargir à tout le web » ou la recherche directe.'));
       const req = [label, nom, specialite, ville, numero].filter(s => s.trim()).join(' · ');
       if (r.resultats.length) await ajouterHistorique(req, r.resultats);
+      else setLiens(liensPro(prof, crit));
     } catch (e: any) {
       setErreur(e?.message ?? String(e));
+      if (e instanceof ErreurMoteur && e.quota) setLiens(liensPro(prof, crit));
     } finally {
       setEtat(null);
     }
@@ -75,6 +80,7 @@ export default function ProsScreen({ onOpen }: { onOpen: (f: Fiche) => void }) {
       {erreur && <Text style={S.error}>{erreur}</Text>}
       {etat && <Chargement texte={etat} />}
       <ListeResultats fiches={fiches} message={message} onOpen={onOpen} />
+      <LiensDirects liens={liens} />
     </ScrollView>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, Switch, Text, View } from 'react-native';
+import { Lien } from '../liens';
 import { C, S } from '../theme';
 import { Fiche } from '../types';
 import { sousTitre } from '../champs';
@@ -68,6 +69,22 @@ export function ListeResultats(p: { fiches: Fiche[]; message?: string; onOpen: (
           {f.kind === 'pro' && f.adresse_cabinet ? <Text style={{ fontSize: 13, color: C.text, marginTop: 6 }} numberOfLines={2}>{f.adresse_cabinet}</Text> : null}
         </Pressable>
       ))}
+    </View>
+  );
+}
+
+export function LiensDirects({ liens }: { liens: Lien[] }) {
+  if (!liens.length) return null;
+  return (
+    <View style={[S.card, { backgroundColor: C.primaryLight }]}>
+      <Text style={{ fontWeight: '600', color: C.primary, marginBottom: 8 }}>Recherche directe (gratuite, illimitée)</Text>
+      <View style={S.row}>
+        {liens.map(l => (
+          <Pressable key={l.url} onPress={() => Linking.openURL(l.url)} style={S.chip}>
+            <Text style={S.chipTxt}>{l.label} ›</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }

@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { S, C } from '../theme';
-import { Bouton, Chargement, Chips, Interrupteur, ListeResultats } from '../components/ui';
+import { Bouton, Chargement, Chips, Interrupteur, ListeResultats, LiensDirects } from '../components/ui';
+import { Lien, liensSociete } from '../liens';
 import { MODES_SOCIETE, ModeSociete, normaliser, valider } from '../validators';
 import { TRIBUNAUX } from '../sources';
-import { lireDocument, rechercherSociete, Extraction } from '../engine';
+import { lireDocument, rechercherSociete, Extraction, ErreurMoteur } from '../engine';
 import { ajouterHistorique } from '../storage';
 import { Fiche } from '../types';
 
@@ -19,22 +20,25 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
   const [fiches, setFiches] = useState<Fiche[]>([]);
   const [message, setMessage] = useState<string>();
   const [lu, setLu] = useState<Extraction | null>(null);
+  const [liens, setLiens] = useState<Lien[]>([]);
 
   const modeDef = MODES_SOCIETE.find(m => m.id === mode)!;
 
   async function lancer(m = mode, v = valeur) {
     const err = valider(m, v);
     if (err) { setErreur(err); return; }
-    setErreur(null); setFiches([]); setMessage(undefined);
+    setErreur(null); setFiches([]); setMessage(undefined); setLiens([]);
     setEtat('Recherche dans les annuaires…');
+    const val = normaliser(m, v);
     try {
-      const val = normaliser(m, v);
       const r = await rechercherSociete({ mode: m, valeur: val, tribunal: m === 'rc' ? tribunal : undefined, webEntier });
       setFiches(r.resultats);
-      setMessage(r.message || (r.resultats.length ? undefined : 'Aucun résultat. Essayez « Élargir à tout le web ».'));
+      setMessage(r.message || (r.resultats.length ? undefined : 'Aucun résultat. Essayez « Élargir à tout le web » ou la recherche directe.'));
       if (r.resultats.length) await ajouterHistorique(`${modeDef.label} ${val}`, r.resultats);
+      else setLiens(liensSociete(val));
     } catch (e: any) {
       setErreur(e?.message ?? String(e));
+      if (e instanceof ErreurMoteur && e.quota) setLiens(liensSociete(val));
     } finally {
       setEtat(null);
     }
@@ -121,6 +125,7 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
       {erreur && <Text style={S.error}>{erreur}</Text>}
       {etat && <Chargement texte={etat} />}
       <ListeResultats fiches={fiches} message={message} onOpen={onOpen} />
+      <LiensDirects liens={liens} />
     </ScrollView>
   );
 }
