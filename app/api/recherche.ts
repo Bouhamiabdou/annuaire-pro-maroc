@@ -5,7 +5,7 @@
 // Sortie  : { texte, sources: [{ url, titre }] }  |  { error: { message, code? } }
 
 const MODELE = 'gemini-flash-lite-latest';
-const VERSION = '2026-11-12.6';
+const VERSION = '2026-11-12.7';
 const env = (k: string): string =>
   ((globalThis as any).process?.env?.[k] ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
 
@@ -59,9 +59,12 @@ async function chercherWeb(requete: string, domaines: string[]): Promise<Trouve[
     return (data.results ?? []).map((r: any) => ({ url: r.url, titre: r.title, extrait: String(r.content ?? '').slice(0, 1500) }));
   };
 
-  let trouves = await appel(domaines);
-  // Rien dans les annuaires ciblés : on élargit une fois à tout le web.
-  if (!trouves.length && domaines.length) trouves = await appel([]);
+  let trouves: Trouve[] = await appel(domaines);
+  // Peu de résultats dans les annuaires ciblés : on complète une fois avec tout le web.
+  if (trouves.length < 4 && domaines.length) {
+    const vus = new Set(trouves.map(t => t.url));
+    trouves = [...trouves, ...(await appel([])).filter((t: Trouve) => !vus.has(t.url))];
+  }
   return trouves;
 }
 

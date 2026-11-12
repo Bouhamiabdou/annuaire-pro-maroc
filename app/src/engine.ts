@@ -52,6 +52,8 @@ Règles :
 - N'affirme que ce que les résultats de recherche fournis indiquent.
 - N'invente jamais un numéro (ICE, RC, IF, téléphone, inscription). Si un champ est inconnu, omets-le.
 - Si plusieurs sources divergent, signale-le dans "remarques".
+- Les noms marocains s'écrivent de plusieurs façons en lettres latines (Agdach, Aguedach, Agdache ; Benali, Ben Ali). Traite ces variantes comme le même nom, et accepte les abréviations (ophtalmo = ophtalmologue).
+- Si aucun résultat ne correspond exactement, renvoie quand même les résultats les plus proches plutôt qu'une liste vide, en indiquant l'écart dans "remarques" (orthographe ou spécialité différente).
 - Chaque fiche liste dans "sources" les URL des résultats utilisés (copiées telles quelles).
 - Réponds en français, uniquement par un objet JSON entre <json> et </json>, sans autre texte.`;
 
