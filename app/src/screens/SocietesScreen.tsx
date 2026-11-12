@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { S, C } from '../theme';
 import { Bouton, Chargement, Chips, ListeResultats, LiensDirects } from '../components/ui';
 import { Lien, liensSociete } from '../liens';
-import { MODES_SOCIETE, ModeSociete, normaliser, valider } from '../validators';
+import { MODES_SOCIETE, ModeSociete, iceValide, normaliser, valider } from '../validators';
 import { TRIBUNAUX } from '../sources';
 import { lireDocument, rechercherSociete, Extraction, ErreurMoteur } from '../engine';
 import { ajouterHistorique } from '../storage';
@@ -69,7 +69,14 @@ export default function SocietesScreen({ onOpen }: { onOpen: (f: Fiche) => void 
       const ex = await lireDocument(a.base64, a.mimeType ?? 'image/jpeg');
       setLu(ex);
       setEtat(null);
-      if (ex.ice && ex.ice.length === 15) { setMode('ice'); setValeur(ex.ice); ouvrir('ice', ex.ice); }
+      if (ex.ice && iceValide(ex.ice)) { setMode('ice'); setValeur(ex.ice); ouvrir('ice', ex.ice); }
+      else if (ex.ice) {
+        // Lecture douteuse : la clé de contrôle ne tombe pas juste. On laisse corriger, et on propose le nom.
+        setMode('ice'); setValeur(ex.ice);
+        setErreur("ICE lu de façon incertaine (clé de contrôle invalide). Corrigez les chiffres d'après le ticket" +
+          (ex.raison_sociale ? ', ou utilisez la recherche par nom ci-dessous.' : '.'));
+        if (ex.raison_sociale) setLiens(liensSociete(ex.raison_sociale, false));
+      }
       else if (ex.rc) { setMode('rc'); setValeur(ex.rc); ouvrir('rc', ex.rc); }
       else if (ex.raison_sociale) { setMode('nom'); setValeur(ex.raison_sociale); ouvrir('nom', ex.raison_sociale); }
       else setErreur('Aucun identifiant lisible sur le document.');

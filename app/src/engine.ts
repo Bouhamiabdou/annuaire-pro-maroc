@@ -158,6 +158,7 @@ export async function lireDocument(base64: string, mimeType = 'image/jpeg'): Pro
     image: { data: base64, mimeType },
     prompt: `Extrais de ce document marocain (ticket, facture, cachet) les identifiants de l'émetteur.
 Format : {"ice":"","rc":"","identifiant_fiscal":"","raison_sociale":"","telephone":"","adresse":""}
+L'ICE compte exactement 15 chiffres : lis-le chiffre par chiffre avec attention (ne confonds pas 6/8, 3/9, 4/9, 0/8).
 Ne recopie que ce qui est lisible ; laisse vide sinon. Pour un nom tronqué, donne la partie lisible.`,
   });
   const j = extraireJSON(r.texte);

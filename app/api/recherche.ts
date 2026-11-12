@@ -5,7 +5,7 @@
 // Sortie  : { texte, sources: [{ url, titre }] }  |  { error: { message, code? } }
 
 const MODELE = 'gemini-flash-lite-latest';
-const VERSION = '2026-11-12.9';
+const VERSION = '2026-11-12.10';
 const env = (k: string): string =>
   ((globalThis as any).process?.env?.[k] ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
 
@@ -69,15 +69,22 @@ async function chercherWeb(requete: string, domaines: string[]): Promise<Trouve[
   return trouves;
 }
 
-async function gemini(system: string | undefined, parts: any[]): Promise<string> {
+// Lecture d'image : modèle plus précis d'abord, modèle léger en secours s'il est saturé.
+async function gemini(system: string | undefined, parts: any[], image = false): Promise<string> {
+  if (image && !env('GEMINI_MODEL')) {
+    try { return await geminiAvec('gemini-flash-latest', system, parts, 1); } catch { /* secours ci-dessous */ }
+  }
+  return geminiAvec(env('GEMINI_MODEL') || MODELE, system, parts, 2);
+}
+
+async function geminiAvec(modele: string, system: string | undefined, parts: any[], essais: number): Promise<string> {
   // Netlify injecte lui-même GEMINI_API_KEY (jeton de son AI Gateway, inutilisable chez Google).
   // La clé personnelle se lit donc dans CLE_GEMINI ; GEMINI_API_KEY ne sert que hors Netlify.
   const cle = env('CLE_GEMINI') || env('GEMINI_API_KEY');
   if (!cle) throw new Erreur(500, 'Service non configuré (CLE_GEMINI absente).');
-  const modele = env('GEMINI_MODEL') || MODELE;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modele)}:generateContent`;
 
-  for (let essai = 0; essai < 2; essai++) {
+  for (let essai = 0; essai < essais; essai++) {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': cle },
@@ -92,7 +99,7 @@ async function gemini(system: string | undefined, parts: any[]): Promise<string>
       return (data?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p?.text ?? '').join('\n');
     }
     const msg: string = data?.error?.message ?? '';
-    if (res.status === 503 && essai === 0) { await new Promise(r => setTimeout(r, 1500)); continue; }
+    if (res.status === 503 && essai < essais - 1) { await new Promise(r => setTimeout(r, 1500)); continue; }
     if (res.status === 429) throw new Erreur(429, 'Quota gratuit Gemini atteint.', 'quota');
     if (/API key not valid|API_KEY_INVALID/i.test(msg)) throw new Erreur(500, env('CLE_GEMINI') ? 'Clé Gemini invalide sur le serveur (variable CLE_GEMINI).' : 'Variable CLE_GEMINI absente sur le serveur.');
     if (res.status === 402) throw new Erreur(500, 'Clé Gemini liée à un projet payant sans crédit : utilisez une clé de projet gratuit.');
@@ -128,7 +135,7 @@ export async function POST(request: Request) {
     if (image) parts.push({ inline_data: { mime_type: String(image.mimeType || 'image/jpeg'), data: image.data } });
     parts.push({ text: contexte ? `${contexte}\n\n---\n\n${prompt}` : prompt });
 
-    const texte = await gemini(typeof system === 'string' ? system : undefined, parts);
+    const texte = await gemini(typeof system === 'string' ? system : undefined, parts, !!image);
     return json(200, { texte, sources: sources.map(s => ({ url: s.url, titre: s.titre })) });
   } catch (e: any) {
     if (e instanceof Erreur) return json(e.status, { error: { message: e.message, code: e.code } });

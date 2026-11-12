@@ -11,12 +11,22 @@ export const MODES_SOCIETE: { id: ModeSociete; label: string; placeholder: strin
 
 const chiffres = (s: string) => s.replace(/\D/g, '');
 
+/** Un ICE valide compte 15 chiffres et est divisible par 97 (clé de contrôle). */
+export function iceValide(valeur: string): boolean {
+  const c = chiffres(valeur);
+  if (c.length !== 15) return false;
+  let r = 0;
+  for (const ch of c) r = (r * 10 + Number(ch)) % 97;
+  return r === 0;
+}
+
 export function valider(mode: ModeSociete, valeur: string): string | null {
   const v = valeur.trim();
   if (!v) return 'Saisissez une valeur.';
   switch (mode) {
     case 'ice':
-      return chiffres(v).length === 15 ? null : "L'ICE comporte 15 chiffres.";
+      if (chiffres(v).length !== 15) return "L'ICE comporte 15 chiffres.";
+      return iceValide(v) ? null : 'Clé de contrôle invalide : un chiffre de cet ICE est erroné, vérifiez la saisie.';
     case 'rc':
       return /^\d{1,7}$/.test(chiffres(v)) ? null : 'Le RC est un numéro (1 à 7 chiffres).';
     case 'if':
