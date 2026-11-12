@@ -108,6 +108,20 @@ Si rien n'est trouvé : <json>{"resultats":[],"message":"explication courte"}</j
   return { resultats: nettoyer<FicheSociete>(json.resultats, 'societe', r.sources), message: json.message };
 }
 
+const ABREVIATIONS: Record<string, string> = {
+  ophtalmo: 'ophtalmologue', cardio: 'cardiologue', dermato: 'dermatologue', gyneco: 'gynécologue',
+  'gynéco': 'gynécologue', gastro: 'gastro-entérologue', neuro: 'neurologue', pneumo: 'pneumologue',
+  rhumato: 'rhumatologue', uro: 'urologue', orl: 'ORL oto-rhino-laryngologiste', psy: 'psychiatre',
+  ortho: 'orthopédiste', endocrino: 'endocrinologue', nephro: 'néphrologue', 'néphro': 'néphrologue',
+  radio: 'radiologue', pedo: 'pédiatre', 'pédia': 'pédiatre', generaliste: 'médecin généraliste',
+};
+
+/** Développe les abréviations courantes de spécialité pour la recherche. */
+function developper(specialite?: string): string {
+  const v = (specialite ?? '').trim();
+  return ABREVIATIONS[v.toLowerCase()] ?? v;
+}
+
 export async function rechercherPro(p: {
   professionId: string; nom?: string; specialite?: string; ville?: string; numero?: string; webEntier?: boolean;
 }): Promise<Resultat> {
@@ -121,10 +135,11 @@ export async function rechercherPro(p: {
   ].filter(Boolean).join(' ; ');
   const prompt = `Recherche des professionnels exerçant au Maroc. Profession : ${prof.label}. ${criteres}
 Ne renvoie que des informations professionnelles publiées (cabinet, inscription à l'ordre ou au barreau, spécialité, téléphone professionnel). N'inclus jamais d'adresse personnelle ni de donnée privée.
-Renvoie au maximum 10 résultats au format :
+Renvoie tous les résultats qui correspondent ou s'en approchent (10 au maximum), les plus proches de la demande en premier, au format :
 <json>${SCHEMA_PRO}</json>
 Si rien n'est trouvé : <json>{"resultats":[],"message":"explication courte"}</json>`;
-  const requete = [prof.label, p.specialite, p.nom, p.ville, p.numero, 'Maroc'].filter(Boolean).join(' ');
+  const spec = developper(p.specialite);
+  const requete = [p.nom && (['medecin', 'dentiste'].includes(prof.id) ? `Dr ${p.nom}` : `${prof.label} ${p.nom}`), spec || prof.label, p.ville, p.numero, 'Maroc'].filter(Boolean).join(' ');
   const r = await appeler({ system: REGLES, prompt, recherche: { requete, domaines: domains } });
   const json = extraireJSON(r.texte);
   return { resultats: nettoyer<FichePro>(json.resultats, 'pro', r.sources), message: json.message };
