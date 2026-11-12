@@ -20,7 +20,8 @@ export function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  const apiKey = env('GEMINI_API_KEY');
+  // Tolère les espaces, retours à la ligne et guillemets collés par erreur.
+  const apiKey = (env('GEMINI_API_KEY') ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
   if (!apiKey) return json(500, { error: { message: 'Service non configuré (clé serveur absente).' } });
 
   let body: any;
@@ -61,7 +62,11 @@ export async function POST(request: Request) {
     if (res.status === 429) {
       return json(429, { error: { code: 'quota', message: 'Quota gratuit du jour atteint.' } });
     }
-    return json(res.status, { error: { message: data?.error?.message || `Erreur du service (${res.status}).` } });
+    const msg: string = data?.error?.message ?? '';
+    if (/API key not valid|API_KEY_INVALID/i.test(msg)) {
+      return json(500, { error: { message: 'Clé Gemini invalide sur le serveur : vérifiez GEMINI_API_KEY dans Netlify puis redéployez.' } });
+    }
+    return json(res.status, { error: { message: msg || `Erreur du service (${res.status}).` } });
   }
 
   const cand = data?.candidates?.[0];
