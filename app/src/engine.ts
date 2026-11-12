@@ -93,12 +93,15 @@ Pour un identifiant (ICE, RC, IF), vérifie que l'identifiant trouvé correspond
 Renvoie au maximum 8 résultats, du plus pertinent au moins pertinent, au format :
 <json>${SCHEMA_SOCIETE}</json>
 Si rien n'est trouvé : <json>{"resultats":[],"message":"explication courte"}</json>`;
-  const requete = p.mode === 'nom' ? `"${p.valeur}" société Maroc ICE RC` :
-    p.mode === 'rc' ? `RC ${p.valeur} ${p.tribunal ?? ''} société Maroc` :
-    p.mode === 'if' ? `identifiant fiscal ${p.valeur} société Maroc` :
-    p.mode === 'tel' ? `"${p.valeur}" société Maroc` :
-    p.mode === 'adresse' ? `${p.valeur} société Maroc` : `ICE ${p.valeur}`;
-  const r = await appeler({ system: REGLES, prompt, recherche: { requete, domaines: domains } });
+  // Un identifiant se cherche tel quel, entre guillemets : c'est ce qui donne les meilleurs résultats.
+  const requete = p.mode === 'ice' ? `"${p.valeur}"` :
+    p.mode === 'rc' ? `"${p.valeur}" RC ${p.tribunal ?? ''} société Maroc` :
+    p.mode === 'if' ? `"${p.valeur}" identifiant fiscal société Maroc` :
+    p.mode === 'tel' ? `"${p.valeur}" Maroc` :
+    p.mode === 'adresse' ? `${p.valeur} société Maroc` : `"${p.valeur}" société Maroc ICE RC`;
+  // L'ICE est unique : recherche directe sur tout le web (une seule requête).
+  const domaines = p.mode === 'ice' ? [] : domains;
+  const r = await appeler({ system: REGLES, prompt, recherche: { requete, domaines } });
   const json = extraireJSON(r.texte);
   return { resultats: nettoyer<FicheSociete>(json.resultats, 'societe', r.sources), message: json.message };
 }
