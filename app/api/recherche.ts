@@ -5,7 +5,7 @@
 // Sortie  : { texte, sources: [{ url, titre }] }  |  { error: { message, code? } }
 
 const MODELE = 'gemini-flash-lite-latest';
-const VERSION = '2026-11-12.2';
+const VERSION = '2026-11-12.3';
 const env = (k: string): string =>
   ((globalThis as any).process?.env?.[k] ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
 
