@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Annuaire Pro Maroc",
+    "slug": "annuaire-pro-maroc",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ma.annuairepro.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "ma.annuairepro.app",
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "Annuaire Pro Maroc",
+      "shortName": "Annuaire Pro",
+      "themeColor": "#0b4f6c",
+      "backgroundColor": "#f5f7f9",
+      "display": "standalone",
+      "output": "single",
+      "lang": "fr"
+    },
+    "plugins": [
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "L'appareil photo sert à lire l'ICE sur un ticket ou une facture."
+        }
+      ]
+    ]
+  }
+}
