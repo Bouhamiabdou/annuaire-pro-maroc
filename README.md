@@ -33,6 +33,12 @@ npx expo start                     # test sur mobile via Expo Go
 eas build -p android --profile preview   # APK Android
 ```
 
+### Variante Netlify
+
+Le fichier `netlify.toml` (racine du dépôt) suffit : importer le dépôt sur app.netlify.com,
+ajouter la variable `GEMINI_API_KEY` (portée : Functions), déployer. Adresse du relais mobile :
+`EXPO_PUBLIC_API_BASE=https://<site>.netlify.app` au moment du build mobile.
+
 ## Fichiers clés
 
 | Fichier | Rôle |
