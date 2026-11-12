@@ -37,7 +37,8 @@ eas build -p android --profile preview   # APK Android
 ### Variante Netlify
 
 Le fichier `netlify.toml` (racine du dépôt) suffit : importer le dépôt sur app.netlify.com,
-ajouter les variables `GEMINI_API_KEY` (aistudio.google.com/apikey, projet sans facturation)
+ajouter les variables `CLE_GEMINI` (aistudio.google.com/apikey, projet sans facturation ; ne pas
+utiliser le nom `GEMINI_API_KEY`, que Netlify remplace par son propre jeton)
 et `TAVILY_API_KEY` (app.tavily.com, gratuit sans carte), portée Functions, puis redéployer. Adresse du relais mobile :
 `EXPO_PUBLIC_API_BASE=https://<site>.netlify.app` au moment du build mobile.
 
