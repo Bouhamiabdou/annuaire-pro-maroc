@@ -38,4 +38,4 @@ export const TRIBUNAUX = [
 
 // Adresse du relais pour les versions mobiles (la version web utilise /api/recherche).
 export const API_BASE: string =
-  (process.env.EXPO_PUBLIC_API_BASE as string | undefined) || 'https://annuaire-pro-maroc.vercel.app';
+  (process.env.EXPO_PUBLIC_API_BASE as string | undefined) || 'https://sensational-rolypoly-38a4c5.netlify.app';
