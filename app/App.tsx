@@ -1,22 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { C } from './src/theme';
 import { Fiche } from './src/types';
-import { lireReglages } from './src/storage';
 import SocietesScreen from './src/screens/SocietesScreen';
 import ProsScreen from './src/screens/ProsScreen';
 import HistoriqueScreen from './src/screens/HistoriqueScreen';
-import ReglagesScreen from './src/screens/ReglagesScreen';
 import FicheModal from './src/components/FicheModal';
 
-type Onglet = 'societes' | 'pros' | 'fiches' | 'reglages';
+type Onglet = 'societes' | 'pros' | 'fiches';
 
 const ONGLETS: { id: Onglet; label: string; icone: string }[] = [
   { id: 'societes', label: 'Sociétés', icone: '🏢' },
   { id: 'pros', label: 'Professionnels', icone: '⚖️' },
   { id: 'fiches', label: 'Mes fiches', icone: '★' },
-  { id: 'reglages', label: 'Réglages', icone: '⚙️' },
 ];
 
 export default function App() {
@@ -26,10 +23,6 @@ export default function App() {
   const { width } = useWindowDimensions();
   const large = width >= 900;
 
-  useEffect(() => {
-    lireReglages().then(r => { if (!r.apiKey) setOnglet('reglages'); });
-  }, []);
-
   const rafraichir = () => setVersion(v => v + 1);
 
   const ecran = (() => {
@@ -37,7 +30,6 @@ export default function App() {
       case 'societes': return <SocietesScreen onOpen={setFiche} />;
       case 'pros': return <ProsScreen onOpen={setFiche} />;
       case 'fiches': return <HistoriqueScreen onOpen={setFiche} version={version} />;
-      case 'reglages': return <ReglagesScreen onSaved={rafraichir} />;
     }
   })();
 

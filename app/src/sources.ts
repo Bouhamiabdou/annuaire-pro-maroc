@@ -36,4 +36,6 @@ export const TRIBUNAUX = [
   'Kénitra', 'El Jadida', 'Settat', 'Mohammedia', 'Tétouan', 'Laâyoune', 'Béni Mellal', 'Safi',
 ];
 
-export const MODELE_PAR_DEFAUT = 'claude-sonnet-5-5';
+// Adresse du relais pour les versions mobiles (la version web utilise /api/claude).
+export const API_BASE: string =
+  (process.env.EXPO_PUBLIC_API_BASE as string | undefined) || 'https://annuaire-pro-maroc.vercel.app';

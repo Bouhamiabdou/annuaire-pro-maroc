@@ -1,37 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Entree, Fiche, titreFiche } from './types';
-import { MODELE_PAR_DEFAUT } from './sources';
 
 const K = {
-  apiKey: 'ap.apiKey',
-  model: 'ap.model',
-  extra: 'ap.extraDomains',
   history: 'ap.history',
   favs: 'ap.favorites',
 };
-
-export type Reglages = { apiKey: string; model: string; extraDomains: string[] };
-
-export async function lireReglages(): Promise<Reglages> {
-  const [apiKey, model, extra] = await Promise.all([
-    AsyncStorage.getItem(K.apiKey),
-    AsyncStorage.getItem(K.model),
-    AsyncStorage.getItem(K.extra),
-  ]);
-  return {
-    apiKey: apiKey ?? '',
-    model: model || MODELE_PAR_DEFAUT,
-    extraDomains: extra ? JSON.parse(extra) : [],
-  };
-}
-
-export async function ecrireReglages(r: Reglages) {
-  await AsyncStorage.multiSet([
-    [K.apiKey, r.apiKey.trim()],
-    [K.model, r.model.trim() || MODELE_PAR_DEFAUT],
-    [K.extra, JSON.stringify(r.extraDomains)],
-  ]);
-}
 
 async function lireListe(key: string): Promise<Entree[]> {
   try {

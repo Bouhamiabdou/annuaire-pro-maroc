@@ -1,12 +1,13 @@
-// Moteur de recherche autonome : appel direct de l'API Claude (outil web_search)
-// depuis l'appareil. Aucun serveur intermédiaire. La clé API reste sur l'appareil.
+// Moteur de recherche : passe par le relais Vercel (api/claude.ts) qui détient la clé.
+// Aucune configuration côté application.
 
+import { Platform } from 'react-native';
 import { Fiche, FichePro, FicheSociete, Resultat, Source } from './types';
-import { lireReglages } from './storage';
-import { PROFESSIONS, SOURCES_SOCIETES } from './sources';
+import { PROFESSIONS, SOURCES_SOCIETES, API_BASE } from './sources';
 import { ModeSociete } from './validators';
 
-const API_URL = 'https://api.anthropic.com/v1/messages';
+// Sur le web, l'application et le relais partagent le même domaine.
+const API_URL = Platform.OS === 'web' ? '/api/claude' : `${API_BASE}/api/claude`;
 
 type Bloc = { type: string; text?: string; [k: string]: unknown };
 type Message = { role: 'user' | 'assistant'; content: string | Bloc[] };
@@ -14,9 +15,6 @@ type Message = { role: 'user' | 'assistant'; content: string | Bloc[] };
 export class ErreurMoteur extends Error {}
 
 async function appeler(messages: Message[], opts: { domains?: string[]; system: string; maxUses?: number }) {
-  const { apiKey, model } = await lireReglages();
-  if (!apiKey) throw new ErreurMoteur('Clé API absente : renseignez-la dans Réglages.');
-
   const tools = opts.domains !== undefined
     ? [{
         type: 'web_search_20250305',
@@ -29,22 +27,21 @@ async function appeler(messages: Message[], opts: { domains?: string[]; system: 
   const conv = [...messages];
   // Boucle : l'API peut suspendre un tour long (stop_reason = pause_turn).
   for (let i = 0; i < 4; i++) {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({ model, max_tokens: 4096, system: opts.system, messages: conv, ...(tools ? { tools } : {}) }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ system: opts.system, messages: conv, ...(tools ? { tools } : {}) }),
+      });
+    } catch {
+      throw new ErreurMoteur('Connexion impossible. Vérifiez votre accès Internet.');
+    }
     if (!res.ok) {
       let detail = '';
       try { detail = (await res.json())?.error?.message ?? ''; } catch { /* ignore */ }
-      if (res.status === 401) throw new ErreurMoteur('Clé API invalide.');
-      if (res.status === 429) throw new ErreurMoteur('Limite de requêtes atteinte, réessayez dans un instant.');
-      throw new ErreurMoteur(`Erreur API (${res.status}) ${detail}`.trim());
+      if (res.status === 429) throw new ErreurMoteur('Service momentanément saturé, réessayez dans un instant.');
+      throw new ErreurMoteur(detail || `Service indisponible (${res.status}).`);
     }
     const data = await res.json();
     const content: Bloc[] = data.content ?? [];
@@ -119,8 +116,7 @@ const LIBELLES: Record<ModeSociete, string> = {
 export async function rechercherSociete(p: {
   mode: ModeSociete; valeur: string; tribunal?: string; webEntier?: boolean;
 }): Promise<Resultat> {
-  const { extraDomains } = await lireReglages();
-  const domains = p.webEntier ? [] : [...SOURCES_SOCIETES, ...extraDomains];
+  const domains = p.webEntier ? [] : SOURCES_SOCIETES;
   const precision = p.mode === 'rc' && p.tribunal ? ` (tribunal de commerce de ${p.tribunal})` : '';
   const question = `Recherche la ou les sociétés marocaines correspondant à ce ${LIBELLES[p.mode]} : "${p.valeur}"${precision}.
 Pour un identifiant (ICE, RC, IF), vérifie que l'identifiant trouvé correspond exactement à la recherche.
@@ -136,8 +132,7 @@ export async function rechercherPro(p: {
   professionId: string; nom?: string; specialite?: string; ville?: string; numero?: string; webEntier?: boolean;
 }): Promise<Resultat> {
   const prof = PROFESSIONS.find(x => x.id === p.professionId) ?? PROFESSIONS[0];
-  const { extraDomains } = await lireReglages();
-  const domains = p.webEntier ? [] : [...prof.sources, ...extraDomains];
+  const domains = p.webEntier ? [] : prof.sources;
   const criteres = [
     p.nom && `nom : ${p.nom}`,
     p.specialite && `spécialité : ${p.specialite}`,
@@ -182,8 +177,4 @@ Ne recopie que ce qui est lisible ; laisse vide sinon. Pour un nom tronqué, don
   }
   if (out.ice) out.ice = out.ice.replace(/\D/g, '');
   return out;
-}
-
-export async function testerCle(): Promise<void> {
-  await appeler([{ role: 'user', content: 'Réponds <json>{"ok":true}</json>' }], { system: 'Réponds en JSON.' });
 }
