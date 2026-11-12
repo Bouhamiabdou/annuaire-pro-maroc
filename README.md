@@ -9,8 +9,9 @@ Fiches avec sources, favoris, historique, export PDF, partage.
 ## Fonctionnement
 
 L'application s'ouvre directement, sans aucune configuration. Les recherches passent par un relais
-serverless Vercel (`app/api/recherche.ts`) qui détient une clé **Gemini gratuite** (Google AI Studio) et
-utilise la recherche Google, orientée vers les annuaires listés dans `src/sources.ts`.
+serverless (`app/api/recherche.ts`, Netlify ou Vercel) entièrement gratuit :
+**Tavily** fait la recherche web (1 000 recherches/mois gratuites, ciblées sur les annuaires de
+`src/sources.ts`), puis **Gemini Flash-Lite** (gratuit) en tire une fiche structurée et lit les photos.
 
 Quand le quota gratuit du jour est atteint (ou sans résultat), l'application propose des liens de
 recherche directe vers chaque annuaire : gratuits et illimités. Aucune facturation possible.
@@ -36,7 +37,8 @@ eas build -p android --profile preview   # APK Android
 ### Variante Netlify
 
 Le fichier `netlify.toml` (racine du dépôt) suffit : importer le dépôt sur app.netlify.com,
-ajouter la variable `GEMINI_API_KEY` (portée : Functions), déployer. Adresse du relais mobile :
+ajouter les variables `GEMINI_API_KEY` (aistudio.google.com/apikey, projet sans facturation)
+et `TAVILY_API_KEY` (app.tavily.com, gratuit sans carte), portée Functions, puis redéployer. Adresse du relais mobile :
 `EXPO_PUBLIC_API_BASE=https://<site>.netlify.app` au moment du build mobile.
 
 ## Fichiers clés

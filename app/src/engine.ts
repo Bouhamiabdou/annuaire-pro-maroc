@@ -1,5 +1,5 @@
-// Moteur de recherche : passe par le relais Vercel (api/recherche.ts), qui interroge
-// Gemini avec la recherche Google. Aucune configuration côté application.
+// Moteur de recherche : passe par le relais (api/recherche.ts) : recherche web Tavily,
+// puis mise en fiche par Gemini. Aucune configuration côté application.
 
 import { Platform } from 'react-native';
 import { FichePro, FicheSociete, Resultat, Source } from './types';
@@ -16,7 +16,9 @@ export class ErreurMoteur extends Error {
 type Reponse = { texte: string; sources: Source[] };
 
 async function appeler(p: {
-  system: string; prompt: string; recherche: boolean; image?: { data: string; mimeType: string };
+  system: string; prompt: string;
+  recherche?: { requete: string; domaines: string[] };
+  image?: { data: string; mimeType: string };
 }): Promise<Reponse> {
   let res: Response;
   try {
@@ -47,10 +49,10 @@ function extraireJSON(texte: string): any {
 
 const REGLES = `Tu es un moteur de recherche d'informations publiques et professionnelles sur le Maroc.
 Règles :
-- Utilise la recherche Google, et n'affirme que ce que les pages trouvées indiquent.
+- N'affirme que ce que les résultats de recherche fournis indiquent.
 - N'invente jamais un numéro (ICE, RC, IF, téléphone, inscription). Si un champ est inconnu, omets-le.
 - Si plusieurs sources divergent, signale-le dans "remarques".
-- Chaque fiche liste dans "sources" les URL réelles des pages consultées.
+- Chaque fiche liste dans "sources" les URL des résultats utilisés (copiées telles quelles).
 - Réponds en français, uniquement par un objet JSON entre <json> et </json>, sans autre texte.`;
 
 const SCHEMA_SOCIETE = `{"resultats":[{"raison_sociale":"","sigle":"","forme_juridique":"","capital":"","rc":"","tribunal":"","ice":"","identifiant_fiscal":"","patente":"","cnss":"","adresse":"","ville":"","activite":"","date_creation":"","statut":"","telephone":"","dirigeants":"","remarques":"","sources":[{"titre":"","url":""}]}],"message":""}`;
@@ -81,23 +83,22 @@ const LIBELLES: Record<ModeSociete, string> = {
   adresse: 'adresse',
 };
 
-const consigneSources = (domains: string[]) =>
-  domains.length
-    ? `Cherche en priorité sur ces sites (par exemple avec « site:domaine ») : ${domains.join(', ')}. N'utilise d'autres sites que si ceux-ci ne donnent rien.`
-    : 'Cherche sur l\'ensemble du web.';
-
 export async function rechercherSociete(p: {
   mode: ModeSociete; valeur: string; tribunal?: string; webEntier?: boolean;
 }): Promise<Resultat> {
   const domains = p.webEntier ? [] : SOURCES_SOCIETES;
   const precision = p.mode === 'rc' && p.tribunal ? ` (tribunal de commerce de ${p.tribunal})` : '';
   const prompt = `Recherche la ou les sociétés marocaines correspondant à ce ${LIBELLES[p.mode]} : "${p.valeur}"${precision}.
-${consigneSources(domains)}
 Pour un identifiant (ICE, RC, IF), vérifie que l'identifiant trouvé correspond exactement à la recherche.
 Renvoie au maximum 8 résultats, du plus pertinent au moins pertinent, au format :
 <json>${SCHEMA_SOCIETE}</json>
 Si rien n'est trouvé : <json>{"resultats":[],"message":"explication courte"}</json>`;
-  const r = await appeler({ system: REGLES, prompt, recherche: true });
+  const requete = p.mode === 'nom' ? `"${p.valeur}" société Maroc ICE RC` :
+    p.mode === 'rc' ? `RC ${p.valeur} ${p.tribunal ?? ''} société Maroc` :
+    p.mode === 'if' ? `identifiant fiscal ${p.valeur} société Maroc` :
+    p.mode === 'tel' ? `"${p.valeur}" société Maroc` :
+    p.mode === 'adresse' ? `${p.valeur} société Maroc` : `ICE ${p.valeur}`;
+  const r = await appeler({ system: REGLES, prompt, recherche: { requete, domaines: domains } });
   const json = extraireJSON(r.texte);
   return { resultats: nettoyer<FicheSociete>(json.resultats, 'societe', r.sources), message: json.message };
 }
@@ -114,12 +115,12 @@ export async function rechercherPro(p: {
     p.numero && `numéro d'inscription : ${p.numero}`,
   ].filter(Boolean).join(' ; ');
   const prompt = `Recherche des professionnels exerçant au Maroc. Profession : ${prof.label}. ${criteres}
-${consigneSources(domains)}
 Ne renvoie que des informations professionnelles publiées (cabinet, inscription à l'ordre ou au barreau, spécialité, téléphone professionnel). N'inclus jamais d'adresse personnelle ni de donnée privée.
 Renvoie au maximum 10 résultats au format :
 <json>${SCHEMA_PRO}</json>
 Si rien n'est trouvé : <json>{"resultats":[],"message":"explication courte"}</json>`;
-  const r = await appeler({ system: REGLES, prompt, recherche: true });
+  const requete = [prof.label, p.specialite, p.nom, p.ville, p.numero, 'Maroc'].filter(Boolean).join(' ');
+  const r = await appeler({ system: REGLES, prompt, recherche: { requete, domaines: domains } });
   const json = extraireJSON(r.texte);
   return { resultats: nettoyer<FichePro>(json.resultats, 'pro', r.sources), message: json.message };
 }
@@ -132,7 +133,6 @@ export type Extraction = {
 export async function lireDocument(base64: string, mimeType = 'image/jpeg'): Promise<Extraction> {
   const r = await appeler({
     system: 'Tu extrais des données de documents. Réponds uniquement en JSON entre <json> et </json>.',
-    recherche: false,
     image: { data: base64, mimeType },
     prompt: `Extrais de ce document marocain (ticket, facture, cachet) les identifiants de l'émetteur.
 Format : <json>{"ice":"","rc":"","identifiant_fiscal":"","raison_sociale":"","telephone":"","adresse":""}</json>
