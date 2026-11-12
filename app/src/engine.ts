@@ -92,6 +92,8 @@ export async function rechercherSociete(p: {
   const precision = p.mode === 'rc' && p.tribunal ? ` (tribunal de commerce de ${p.tribunal})` : '';
   const prompt = `Recherche la ou les sociétés marocaines correspondant à ce ${LIBELLES[p.mode]} : "${p.valeur}"${precision}.
 Pour un identifiant (ICE, RC, IF), vérifie que l'identifiant trouvé correspond exactement à la recherche.
+Pour une raison sociale, accepte les fautes de frappe et variantes proches (pize food = Pisé Food) et classe d'abord le nom le plus ressemblant.
+Remplis tous les champs présents dans les pages (ICE, IF, RC, tribunal, adresse, forme, date, statut).
 Renvoie au maximum 8 résultats, du plus pertinent au moins pertinent, au format :
 ${SCHEMA_SOCIETE}
 Si rien n'est trouvé : {"resultats":[],"message":"explication courte"}`;
@@ -100,7 +102,7 @@ Si rien n'est trouvé : {"resultats":[],"message":"explication courte"}`;
     p.mode === 'rc' ? `"${p.valeur}" RC ${p.tribunal ?? ''} société Maroc` :
     p.mode === 'if' ? `"${p.valeur}" identifiant fiscal société Maroc` :
     p.mode === 'tel' ? `"${p.valeur}" Maroc` :
-    p.mode === 'adresse' ? `${p.valeur} société Maroc` : `"${p.valeur}" société Maroc ICE RC`;
+    p.mode === 'adresse' ? `${p.valeur} société Maroc` : `${p.valeur} société Maroc ICE RC`;
   // L'ICE est unique : recherche directe sur tout le web (une seule requête).
   const domaines = p.mode === 'ice' ? [] : domains;
   const r = await appeler({ system: REGLES, prompt, recherche: { requete, domaines } });

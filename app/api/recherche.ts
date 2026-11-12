@@ -5,7 +5,7 @@
 // Sortie  : { texte, sources: [{ url, titre }] }  |  { error: { message, code? } }
 
 const MODELE = 'gemini-flash-lite-latest';
-const VERSION = '2026-11-12.8';
+const VERSION = '2026-11-12.9';
 const env = (k: string): string =>
   ((globalThis as any).process?.env?.[k] ?? '').trim().replace(/^["']+|["']+$/g, '').trim();
 
@@ -46,7 +46,8 @@ async function chercherWeb(requete: string, domaines: string[]): Promise<Trouve[
       body: JSON.stringify({
         query: requete.slice(0, 380),
         search_depth: 'basic',
-        max_results: 8,
+        max_results: 6,
+        include_raw_content: true, // texte complet des pages, pas seulement un extrait
         ...(doms.length ? { include_domains: doms.slice(0, 20) } : {}),
       }),
     });
@@ -56,7 +57,7 @@ async function chercherWeb(requete: string, domaines: string[]): Promise<Trouve[
     }
     if (res.status === 401) throw new Erreur(500, 'Clé Tavily invalide sur le serveur.');
     if (!res.ok) throw new Erreur(502, data?.detail?.error || `Recherche indisponible (${res.status}).`);
-    return (data.results ?? []).map((r: any) => ({ url: r.url, titre: r.title, extrait: String(r.content ?? '').slice(0, 1500) }));
+    return (data.results ?? []).map((r: any) => ({ url: r.url, titre: r.title, extrait: String(r.raw_content || r.content || '').replace(/\s+/g, ' ').slice(0, 5000) }));
   };
 
   let trouves: Trouve[] = await appel(domaines);
